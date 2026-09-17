@@ -42,20 +42,30 @@ jobs:
           python ../src/Monopogen.py germline -r region.lst -p ../example/ -g ../example/chr20_2Mb.hg38.fa -m 3 -s all -o out -t 2
           test -f out/germline/chr20.phased.vcf.gz
 
+      - name: Prepare a small cell subset for CI speed
+        working-directory: test
+        run: |
+          # bamSplit() does a full linear scan of the merged BAM per unique
+          # cell with no indexed lookup -- the full example/cell_cluster.csv
+          # has 21,816 cells, which takes ~50 minutes even on this tiny 2Mb
+          # test region. 100 cells is enough to exercise the same code path.
+          (head -1 ../example/cell_cluster.csv && tail -n +2 ../example/cell_cluster.csv | head -100) > ci_cell_cluster.csv
+          wc -l ci_cell_cluster.csv
+
       - name: somatic (featureInfo)
         working-directory: test
         run: |
-          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -s featureInfo -g ../example/chr20_2Mb.hg38.fa
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ci_cell_cluster.csv -t 2 -s featureInfo -g ../example/chr20_2Mb.hg38.fa
 
       - name: somatic (cellScan)
         working-directory: test
         run: |
-          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -w 10MB -s cellScan -g ../example/chr20_2Mb.hg38.fa
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ci_cell_cluster.csv -t 2 -w 10MB -s cellScan -g ../example/chr20_2Mb.hg38.fa
 
       - name: somatic (LDrefinement)
         working-directory: test
         run: |
-          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -s LDrefinement -g ../example/chr20_2Mb.hg38.fa
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ci_cell_cluster.csv -t 2 -s LDrefinement -g ../example/chr20_2Mb.hg38.fa
 
       - name: Upload output on failure
         if: failure()
