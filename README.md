@@ -1202,6 +1202,23 @@ release tag. Changes on top of that tag:
   removal above. Historical example *output* further up this README
   (timestamped log lines, raw shell commands as they were actually printed)
   is left verbatim -- it's a record of a real run, not live instructions.
+* **Fixed module failures being silently reported as `Success!`**:
+  `main()` unconditionally logged success after `args.func(args)`
+  returned, and several functions that should have caught a failure
+  never actually could -- `germline.py`'s `runCMD()` returned an
+  undefined variable on its success path and silently swallowed
+  failures on the other; `somatic.py`'s `runCMD()` didn't capture
+  `os.system()`'s exit status at all; several `Pool.map()` results
+  (`preProcess`'s `BamFilter`, `somatic`'s `bamExtract`/`featureInfo`,
+  `germline`'s own job runner) were computed and never checked. Fixed
+  each to propagate success/failure and checked at every call site.
+  Along the way, running this for real in CI (see
+  [`.github/workflows/smoke-test.yml`](.github/workflows/smoke-test.yml))
+  surfaced that Beagle 4.1's own process exit code is not a reliable
+  success signal -- a run confirmed complete and correct (valid,
+  non-empty final VCF, log ending cleanly in `finished`) still exited
+  non-zero. `germline()`'s check now verifies the step's actual expected
+  output file instead of trusting that exit code.
 
 ## License
 

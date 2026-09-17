@@ -74,8 +74,9 @@ def germline(args):
 	os.system("mkdir -p " + out +  "/Script")
 
 
-	# check whether region files were set correctly 
+	# check whether region files were set correctly
 	joblst = []
+	jobid_lst = []
 	with open(args.region) as f_in:
 		for line in f_in:
 			record = line.strip().split(",")
@@ -107,13 +108,36 @@ def germline(args):
 					f_out.write(cmd5 + "\n")
 			
 			joblst.append("bash " + out + "/Script/runGermline_" +  jobid +  ".sh")
+			jobid_lst.append(jobid)
 	f_out.close()
 
 	if not args.norun == "TRUE":
 		with Pool(processes=args.nthreads) as pool:
 			print(joblst)
 			result = pool.map(runCMD, joblst)
-		error_check(all = joblst, output = result, step = "germline module")
+
+		# beagle's own process exit status is not a reliable success signal --
+		# a run confirmed complete and correct (valid, non-empty final VCF,
+		# clean "finished" in its log) has still been observed to exit
+		# non-zero. Check for the step's actual expected output file instead.
+		if args.step == "varScan":
+			expected_suffix = "/germline/{}.gl.vcf.gz"
+		elif args.step == "varImpute":
+			expected_suffix = "/germline/{}.germline.vcf"
+		else:
+			expected_suffix = "/germline/{}.phased.vcf.gz"
+
+		failed = []
+		for jobid in jobid_lst:
+			expected_file = out + expected_suffix.format(jobid)
+			if not (os.path.isfile(expected_file) and os.path.getsize(expected_file) > 0):
+				failed.append(jobid)
+
+		if failed:
+			for jobid in failed:
+				logger.error("In germline module step {} failed! Expected output file was not created.".format(jobid))
+			logger.error("Failed! See instructions above.")
+			exit(1)
 
 
 
