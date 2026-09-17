@@ -486,24 +486,15 @@ def vcf2mat(args):
 def bam2mat(args): 
 
 	samtools = SAMTOOLS
-	beagle = BEAGLE
 	bam_filter =  args.out + "/Bam/" + args.chr + ".filter.targeted.bam"
 	snv_pos =  args.out + "/germline/" + args.chr + ".gl.vcf.filter.hc.bed"
 	bam_lst = args.out + "/Bam/cell_bam.lst"
 	vcf_out = args.out + "/germline/" + args.chr + ".gl.filter.hc.cell.vcf.gz"
 	out = args.out
 
-	# NOTE: the reference/map/imputation-panel paths below are still hardcoded
-	# to the original author's institutional scratch space (unrelated to the
-	# app-path/tool-binary cleanup this function otherwise received) and will
-	# not resolve outside that environment -- flagged separately, not fixed here.
-	cmd = samtools + " mpileup  -u -q 20 -Q 20  -t DP4   -d 10000000  -l " + snv_pos + " -b " + bam_lst + " -f  /rsrch3/scratch/bcb/jdou1/scAncestry/ref/fasta/genome.fa | " +  bcftools + " view | " + bgzip + " -c > " + vcf_out
-	args.map = "/rsrch3/scratch/bcb/jdou1/scAncestry/ref/1KG3/plink." + args.chr + ".phase.addchr.GRCh38.map"
-	args.imputation_panel  = "/rsrch3/scratch/bcb/jdou1/scAncestry/ref/1KG3/CCDG_14151_B01_GRM_WGS_2020-08-05_" + args.chr + ".filtered.shapeit2-duohmm-phased.vcf.gz"
-	cmd3 = beagle + " -Xmx20g gt=" +  out + "/germline/" +  args.chr + ".gt.vcf.gz  map="  + args.map +  " ref=" +  args.imputation_panel  + "  chrom=" + args.chr  + " out="   +  args.out + "/germline/" + args.chr + "_phased " + "impute=false  modelscale=2  nthreads=48  gprobs=true  niterations=0"
-		
+	cmd = samtools + " mpileup  -u -q 20 -Q 20  -t DP4   -d 10000000  -l " + snv_pos + " -b " + bam_lst + " -f  " + args.reference + " | " +  bcftools + " view | " + bgzip + " -c > " + vcf_out
+
 	with open(args.out+"/Script" + args.chr + "/Bam2mat.sh","w") as f_out:
-		#f_out.write(cmd3 + "\n")
 		f_out.write(cmd + "\n")
 	cmd="bash " + args.out+"/Script" + args.chr + "/Bam2mat.sh"
 	
@@ -628,6 +619,8 @@ def main():
 								help="The chromosome used for variant calling")
 	parser_somatic.add_argument('-l', '--barcode', required= True,
 								help="The csv file including cell barcode information")
+	parser_somatic.add_argument('-g', '--reference', required= True,
+								help="The human genome reference used for alignment")
 	parser_somatic.set_defaults(func=somatic)
 
 	args = parser.parse_args()

@@ -227,11 +227,17 @@ release tag. Changes on top of that tag:
 * **Removed `pillow`** from the dependency list: listed in upstream's
   `requirements.txt` but not actually imported anywhere in the codebase.
 
-**Known, deliberately untouched**: `bam2mat()` still hardcodes its reference
-genome, genetic map, and imputation panel paths to the original author's
-institutional scratch space (e.g. `/rsrch3/scratch/bcb/jdou1/...`). This
-predates this fork and is unrelated to the changes above; it's flagged with a
-comment in `src/Monopogen.py` rather than fixed here.
+* **Removed `bam2mat()`'s hardcoded institutional paths** (e.g.
+  `/rsrch3/scratch/bcb/jdou1/...`), previously the original author's own
+  reference genome, genetic map, and imputation panel locations:
+  * Its live `samtools mpileup` reference path now comes from a new required
+    `-g`/`--reference` argument on `somatic`, matching the argument
+    `germline` already exposes.
+  * The genetic-map and imputation-panel paths were only ever used to build
+    a Beagle re-phasing command (`cmd3`) that was never actually written to
+    the script it runs (`#f_out.write(cmd3 + "\n")` was commented out) --
+    dead code, so it's removed rather than wired up to new arguments for a
+    step that wasn't being executed in the first place.
 
 ## License
 
