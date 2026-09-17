@@ -2,10 +2,10 @@
 
 > **This is a fork.** This repository (`takarabiousa/Monopogen`) is a fork of
 > [`KChen-lab/Monopogen`](https://github.com/KChen-lab/Monopogen), maintained by
-> Takara Bio USA for use in [CogentAP](https://github.com/takarabiousa/CogentAP).
-> The `v1.0` branch is based on the upstream [`v1.0.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.0.0)
-> release tag. See [Changes made in this fork](#changes-made-in-this-fork) below
-> for what differs from upstream, and [License](#license) for licensing and
+> Takara Bio USA. The `v1.0` branch is based on the upstream
+> [`v1.0.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.0.0) release
+> tag. See [Changes made in this fork](#changes-made-in-this-fork) below for
+> what differs from upstream, and [License](#license) for licensing and
 > attribution.
 
 SNV calling from single cell sequencing data
