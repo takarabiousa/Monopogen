@@ -27,6 +27,15 @@ LIB_PATH = os.path.abspath(
 if LIB_PATH not in sys.path:
 	sys.path.insert(0, LIB_PATH)
 
+# External tools are installed via environment.yml and resolved on PATH -- no
+# --app-path/bundled-binary directory is required. Centralized here so every
+# call site refers to the same names.
+SAMTOOLS = "samtools"
+BCFTOOLS = "bcftools"
+BGZIP = "bgzip"
+BEAGLE = "beagle"
+REQUIRED_PROGRAMS = (SAMTOOLS, BCFTOOLS, BGZIP, BEAGLE)
+
 PIPELINE_BASEDIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 CFG_DIR = os.path.join(PIPELINE_BASEDIR, "cfg")
 
@@ -112,11 +121,10 @@ def validate_user_setting_germline(args):
 
 
 def check_dependencies(args):
-	programs_to_check = ("vcftools", "bgzip",  "bcftools", "beagle.08Feb22.fa4.jar", "beagle.27Jul16.86a.jar","samtools","picard.jar", "java")
-
-	for prog in programs_to_check:
-		out = os.popen("command -v {}".format(args.app_path + "/" + prog)).read()
-		assert out != "", "Program {} cannot be found!".format(prog)
+	# Resolved on PATH, provided by the monopogen conda environment (environment.yml)
+	# rather than a user-supplied --app-path directory.
+	for prog in REQUIRED_PROGRAMS:
+		assert shutil.which(prog) is not None, "Program {} cannot be found on PATH!".format(prog)
 
 #	python_pkgs_to_check = ("drmaa",)
 
@@ -271,7 +279,7 @@ def getDPinfo(args):
 				gl_vcf_filter_dp4.write(a)
 
 def BamExtract(args):
-	samtools = os.path.abspath(args.app_path) + "/samtools" 
+	samtools = SAMTOOLS
 	out = os.path.abspath(args.out)
 	inbam = out + "/Bam/" + args.chr + ".filter.bam"
 	outbam =  out + "/Bam/" + args.chr + ".filter.targeted.bam"
@@ -296,7 +304,7 @@ def BamSplit(args):
 	out = args.out
 	bam_filter =  out + "/Bam/" + args.chr + ".filter.targeted.bam"
 	assert os.path.isfile(bam_filter), "Bam filtering target file {} cannot be found! Please run germline mode firslty if you want to call somatic mutaitons".format(bam_filter)
-	samtools = args.samtools 
+	samtools = SAMTOOLS
 	os.system("mkdir -p " + out + "/Bam/split_bam/")
 	cell_clst = pd.read_csv(args.cell_cluster)   
 	df = pd.DataFrame(cell_clst, columns= ['cell','cluster'])
@@ -362,10 +370,10 @@ def germline(args):
 			cmd1 = cmd1 + " | " + bcftools + " view " + " | "  + bcftools  + " norm -m-both -f " + args.reference 
 			cmd1 = cmd1 + " | grep -v \"<X>\" | grep -v INDEL |" + bgzip +   " -c > " + args.out + "/germline/" +  jobid + ".gl.vcf.gz" 
 			#cmd2 = bcftools + " view " +  out + "/germline/" +  jobid + ".gl.vcf.gz" + " -i 'FORMAT/DP>1' | " + bcftools + " call -cv  | " + bgzip +    "  -c > " +  args.out + "/SCvarCall/"  +  jobid + ".gt.vcf.gz"
-			cmd3 = java + " -Xmx20g -jar " + beagle +  " gl=" +  out + "/germline/" +  jobid + ".gl.vcf.gz"  +  " ref=" +  args.imputation_panel  + "  chrom=" + record[0] + " out="   +  out + "/germline/" + jobid + ".gp " + "impute=false  modelscale=2  nthreads=1  gprobs=true  niterations=0"
-			
+			cmd3 = beagle + " -Xmx20g gl=" +  out + "/germline/" +  jobid + ".gl.vcf.gz"  +  " ref=" +  args.imputation_panel  + "  chrom=" + record[0] + " out="   +  out + "/germline/" + jobid + ".gp " + "impute=false  modelscale=2  nthreads=1  gprobs=true  niterations=0"
+
 			cmd4 = "zless -S " +  out + "/germline/" + jobid + ".gp.vcf.gz | grep -v  0/0  > " +  out + "/germline/" + jobid + ".germline.vcf"
-			cmd5 = java + " -Xmx20g -jar " + beagle +  " gt=" +  out + "/germline/" +  jobid + ".germline.vcf"  +  " ref=" +  args.imputation_panel   +  "  chrom=" + record[0]  + " out="   +  out + "/germline/" + jobid+ ".phased " + "impute=false  modelscale=2  nthreads=48  gprobs=true  niterations=0"
+			cmd5 = beagle + " -Xmx20g gt=" +  out + "/germline/" +  jobid + ".germline.vcf"  +  " ref=" +  args.imputation_panel   +  "  chrom=" + record[0]  + " out="   +  out + "/germline/" + jobid+ ".phased " + "impute=false  modelscale=2  nthreads=48  gprobs=true  niterations=0"
 			f_out = open(out + "/Script/runGermline_" +  jobid +  ".sh","w")
 			if args.step == "varScan" or args.step == "all":
 				f_out.write(cmd1 + "\n")
@@ -477,18 +485,22 @@ def vcf2mat(args):
 
 def bam2mat(args): 
 
-	samtools = os.path.abspath(args.app_path) + "/samtools"
-	beagle =  os.path.abspath(args.app_path) + "/beagle.27Jul16.86a.jar" 
+	samtools = SAMTOOLS
+	beagle = BEAGLE
 	bam_filter =  args.out + "/Bam/" + args.chr + ".filter.targeted.bam"
 	snv_pos =  args.out + "/germline/" + args.chr + ".gl.vcf.filter.hc.bed"
 	bam_lst = args.out + "/Bam/cell_bam.lst"
 	vcf_out = args.out + "/germline/" + args.chr + ".gl.filter.hc.cell.vcf.gz"
 	out = args.out
 
-	cmd = samtools + " mpileup  -u -q 20 -Q 20  -t DP4   -d 10000000  -l " + snv_pos + " -b " + bam_lst + " -f  /rsrch3/scratch/bcb/jdou1/scAncestry/ref/fasta/genome.fa | " +  args.bcftools + " view | bgzip -c > " + vcf_out
+	# NOTE: the reference/map/imputation-panel paths below are still hardcoded
+	# to the original author's institutional scratch space (unrelated to the
+	# app-path/tool-binary cleanup this function otherwise received) and will
+	# not resolve outside that environment -- flagged separately, not fixed here.
+	cmd = samtools + " mpileup  -u -q 20 -Q 20  -t DP4   -d 10000000  -l " + snv_pos + " -b " + bam_lst + " -f  /rsrch3/scratch/bcb/jdou1/scAncestry/ref/fasta/genome.fa | " +  bcftools + " view | " + bgzip + " -c > " + vcf_out
 	args.map = "/rsrch3/scratch/bcb/jdou1/scAncestry/ref/1KG3/plink." + args.chr + ".phase.addchr.GRCh38.map"
 	args.imputation_panel  = "/rsrch3/scratch/bcb/jdou1/scAncestry/ref/1KG3/CCDG_14151_B01_GRM_WGS_2020-08-05_" + args.chr + ".filtered.shapeit2-duohmm-phased.vcf.gz"
-	cmd3 = args.java + " -Xmx20g -jar " + beagle +  " gt=" +  out + "/germline/" +  args.chr + ".gt.vcf.gz  map="  + args.map +  " ref=" +  args.imputation_panel  + "  chrom=" + args.chr  + " out="   +  args.out + "/germline/" + args.chr + "_phased " + "impute=false  modelscale=2  nthreads=48  gprobs=true  niterations=0"
+	cmd3 = beagle + " -Xmx20g gt=" +  out + "/germline/" +  args.chr + ".gt.vcf.gz  map="  + args.map +  " ref=" +  args.imputation_panel  + "  chrom=" + args.chr  + " out="   +  args.out + "/germline/" + args.chr + "_phased " + "impute=false  modelscale=2  nthreads=48  gprobs=true  niterations=0"
 		
 	with open(args.out+"/Script" + args.chr + "/Bam2mat.sh","w") as f_out:
 		#f_out.write(cmd3 + "\n")
@@ -578,8 +590,6 @@ def main():
 								help="The bam file for the study sample, the bam file should be sorted. If there are multiple samples, each row with each sample") 
 	parser_preProcess.add_argument('-o', '--out', required= False,
 								help="The output director")
-	parser_preProcess.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_preProcess.add_argument('-m', '--max-mismatch', required=False, type=int, default=3,
 								help="The maximal alignment mismatch allowed in one reads for variant calling")
 	parser_preProcess.add_argument('-t', '--nthreads', required=False, type=int, default=1,
@@ -603,8 +613,6 @@ def main():
 								help="The population-level variant panel for variant imputation refinement, such as 1000 Genome 3")
 	parser_germline.add_argument('-m', '--max-softClipped', required=False, type=int, default=1,
 								help="The maximal soft-clipped allowed in one reads for variant calling")
-	parser_germline.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_germline.add_argument('-t', '--nthreads', required=False, type=int, default=1,
 								help="Number of threads used for SNVs calling")
 	parser_germline.set_defaults(func=germline)
@@ -618,10 +626,8 @@ def main():
 								help="The output folder from previous germline module")
 	parser_somatic.add_argument('-c', '--chr', required= True, 
 								help="The chromosome used for variant calling")
-	parser_somatic.add_argument('-l', '--barcode', required= True, 
+	parser_somatic.add_argument('-l', '--barcode', required= True,
 								help="The csv file including cell barcode information")
-	parser_somatic.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_somatic.set_defaults(func=somatic)
 
 	args = parser.parse_args()
@@ -650,13 +656,12 @@ def main():
 	#	'[{asctime}] {levelname:8s} {filename} {message}', style='{'))
 	#logger.addHandler(handler1)
 
-	global out, samtools, bcftools, bgzip, java, beagle 
+	global out, samtools, bcftools, bgzip, beagle
 	out = os.path.abspath(args.out)
-	samtools  = os.path.abspath(args.app_path) + "/samtools" 
-	bcftools = os.path.abspath(args.app_path) + "/bcftools"
-	bgzip = os.path.abspath(args.app_path) + "/bgzip"
-	java =  "java"
-	beagle = os.path.abspath(args.app_path) + "/beagle.27Jul16.86a.jar"
+	samtools = SAMTOOLS
+	bcftools = BCFTOOLS
+	bgzip = BGZIP
+	beagle = BEAGLE
 
 	args.func(args)
 

@@ -1,0 +1,21 @@
+name: monopogen
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # Matches CogentAP's already-validated pins for this codebase
+  # (config/env/monopogen.yaml) rather than latest bioconda releases.
+  - python=3.9
+  - samtools=1.11
+  - bcftools=1.15.1
+  - tabix=1.11
+  - pysam=0.20.0
+  - numpy=1.19.5
+  - pandas=1.1.5
+  - scipy=1.6.3
+  - openjdk=11.0.9.1
+  # Beagle 4.1: the code hardcodes beagle.27Jul16.86a.jar and passes
+  # modelscale=/niterations=/impute=/gprobs= -- Beagle 4.x-only parameters
+  # that Beagle 5.x's rewritten phasing algorithm no longer accepts.
+  # 4.1_21Jan17.6cc.jar is the closest 4.1 build bioconda still hosts.
+  - beagle=4.1_21Jan17.6cc.jar
