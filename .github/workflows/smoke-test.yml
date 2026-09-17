@@ -49,7 +49,7 @@ jobs:
           # cell with no indexed lookup -- the full example/cell_cluster.csv
           # has 21,816 cells, which takes ~50 minutes even on this tiny 2Mb
           # test region. 100 cells is enough to exercise the same code path.
-          (head -1 ../example/cell_cluster.csv && tail -n +2 ../example/cell_cluster.csv | head -100) > ci_cell_cluster.csv
+          sed -n '1p;2,101p' ../example/cell_cluster.csv > ci_cell_cluster.csv
           wc -l ci_cell_cluster.csv
 
       - name: somatic (featureInfo)
