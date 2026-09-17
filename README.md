@@ -1,4 +1,13 @@
 # Monopogen
+
+> **This is a fork.** This repository (`takarabiousa/Monopogen`) is a fork of
+> [`KChen-lab/Monopogen`](https://github.com/KChen-lab/Monopogen), maintained by
+> Takara Bio USA for use in [CogentAP](https://github.com/takarabiousa/CogentAP).
+> The `v1.0` branch is based on the upstream [`v1.0.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.0.0)
+> release tag. See [Changes made in this fork](#changes-made-in-this-fork) below
+> for what differs from upstream, and [License](#license) for licensing and
+> attribution.
+
 SNV calling from single cell sequencing data
 
 <image src="./example/Fig1.png" width="400"> 
@@ -13,19 +22,20 @@ The output of `Monopogen` will enable 1) ancestry identificaiton on single cell 
 
 
 ## 1. Dependencies
-* python  (version >= 3.73)
-* java (open JDK>=1.8.0)
-* pandas>=1.2.3
-* pysam>=0.16.0.1
-* NumPy>=1.19.5
-* sciPy>=1.6.3
-* pillow>=8.2.0
-## 2. Installation 
-Right now Monopogen is avaiable on github, you can install it through github 
 
-`git clone https://github.com/KChen-lab/Monopogen.git`  
-`cd Monopogen`  
-`pip install -e .`  
+All runtime dependencies -- both the Python packages and the external tools
+(`samtools`, `bcftools`, `tabix`, `beagle`, `openjdk`) -- are pinned in
+[`environment.yml`](./environment.yml) and resolved from a conda environment.
+Tools are looked up on `PATH`; there is no bundled-binary directory to manage.
+
+## 2. Installation
+
+`git clone https://github.com/takarabiousa/Monopogen.git`
+`cd Monopogen`
+`git checkout v1.0`
+`conda env create -f environment.yml`
+`conda activate monopogen`
+`pip install -e .`
 
 ## 3. Usage of Monopogen
   
@@ -36,7 +46,7 @@ You can type the following command to get the help information.
 `python ./src/Monopogen.py  preProcess --help`
 
 ```
-usage: Monopogen.py preProcess [-h] -b BAMFILE [-o OUT] -a APP_PATH
+usage: Monopogen.py preProcess [-h] -b BAMFILE [-o OUT]
                                [-m MAX_MISMATCH] [-t NTHREADS]
 
 optional arguments:
@@ -46,8 +56,6 @@ optional arguments:
                         be sorted. If there are multiple samples, each row
                         with each sample (default: None)
   -o OUT, --out OUT     The output director (default: None)
-  -a APP_PATH, --app-path APP_PATH
-                        The app library paths used in the tool (default: None)
   -m MAX_MISMATCH, --max-mismatch MAX_MISMATCH
                         The maximal alignment mismatch allowed in one reads
                         for variant calling (default: 3)
@@ -69,9 +77,8 @@ There is a bash script `./test/runPreprocess.sh` to run above example in the fol
   
 ```
 path="XXy/Monopogen"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${path}/apps
 
-python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o out  -a ${path}/apps -t 8
+python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o out -t 8
 
 ```
 After running the `preProcess` module, there will be bam files after quality controls in the folder `out/Bam/` which will be used for downstream SNV calling.
@@ -86,7 +93,7 @@ You can type the following command to get the help information.
 usage: Monopogen.py germline [-h] -r REGION -s
                              {varScan,varImpute,varPhasing,all} [-o OUT] -g
                              REFERENCE -p IMPUTATION_PANEL
-                             [-m MAX_SOFTCLIPPED] -a APP_PATH [-t NTHREADS]
+                             [-m MAX_SOFTCLIPPED] [-t NTHREADS]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -103,8 +110,6 @@ optional arguments:
                         The population-level variant panel for variant
                         imputation refinement, such as 1000 Genome 3 (default:
                         None)
-  -a APP_PATH, --app-path APP_PATH
-                        The app library paths used in the tool (default: None)
   -t NTHREADS, --nthreads NTHREADS
                         Number of threads used for SNVs calling (default: 1)
  ```
@@ -113,7 +118,7 @@ There is a bash script `./test/runGermline.sh` to run above example. You need to
   
 ```
 python  ${path}/src/Monopogen.py  germline  \
-    -a   ${path}/apps -t 8   -r  region.lst \
+    -t 8   -r  region.lst \
     -p  ../example/CCDG_14151_B01_GRM_WGS_2020-08-05_chr20.filtered.shapeit2-duohmm-phased.vcf.gz  \
     -g  ../example/chr20_2Mb.hg38.fa   -s all  -o out
 
@@ -161,7 +166,6 @@ Users can submit jobs with multiple chromosomes in the parallele fashion as foll
 
 ```
 path="XX/Monopogen"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${path}/apps
 
 for chr in {1..22}
 do 
@@ -169,7 +173,6 @@ do
         -b  ../example/chr${chr}_2Mb.rh.filter.sort.bam  \
         -y  single  \
         -t  all  \
-        -a  ../apps  \
         -c  chr${chr}  \
         -o  out \
         -d  10 \
@@ -188,20 +191,64 @@ done
 * ***how to perform downstream PCA-based projection or admixture analysis***  
   PCA-based projection analysis can be peformed using [LASER 2.0](http://csg.sph.umich.edu/chaolong/LASER/)
    
-* ***bcftools: error while loading shared libraries: libbz2.so.1.0: not able to open shared object file: No such file or directly***  
-  Adding the `apps` folder of `Monopogen` in your library environment 
-  
-  `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/xx/apps`  
-  
-* ***AssertionError: Program vcftools cannot be found!***  
-  You may set the read/write permission on the folder `xx/apps` as  
-  
-  `chmod 770 -R  /xx/apps` 
- 
+* ***AssertionError: Program samtools/bcftools/bgzip/beagle cannot be found on PATH!***  
+  This fork resolves every external tool from the active conda environment
+  rather than a bundled `apps` folder -- make sure you've run
+  `conda env create -f environment.yml && conda activate monopogen` before
+  invoking `Monopogen.py`.
+
   
 ## 8. Citation
 [Dou J, Tan Y, Wang J, Cheng X, Han KY, Hon CC, Park WY, Shin JW, Chen H, Prabhakar S, Navin N, Chen K. Monopogen : single nucleotide variant calling from single cell sequencing. bioRxiv. 2022 Jan 1](https://www.biorxiv.org/content/10.1101/2022.12.04.519058v1.abstract)
 
+## Changes made in this fork
 
+The `v1.0` branch starts from upstream's [`v1.0.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.0.0)
+release tag. Changes on top of that tag:
 
+* **Added [`environment.yml`](./environment.yml)**, pinning every external
+  tool (`samtools`, `bcftools`, `tabix`, `beagle`) and Python dependency
+  (`pysam`, `numpy`, `pandas`, `scipy`) to versions already validated against
+  this codebase in downstream production use, rather than latest releases.
+  Notably `beagle` is pinned to a 4.1 build (`4.1_21Jan17.6cc.jar`): the code
+  hardcodes `beagle.27Jul16.86a.jar` and passes `modelscale=`/`niterations=`/
+  `impute=`/`gprobs=`, all Beagle 4.x-only parameters that Beagle 5.x's
+  rewritten phasing algorithm no longer accepts.
+* **Removed the required `--app-path`/`-a` argument** (and the bundled
+  `apps/`-relative binary-path convention it implied) from `preProcess`,
+  `germline`, and `somatic`. Tools are now resolved on `PATH`, provided by
+  the conda environment above -- consistent with how `hzvcf.py` already
+  invoked `tabix` elsewhere in this codebase.
+* **Fixed two crash bugs uncovered by that removal**: `BamSplit()` referenced
+  `args.samtools`, and `bam2mat()` referenced `args.bcftools`/`args.java` --
+  none of which were ever defined by `argparse`, so both would raise
+  `AttributeError` on the `somatic` command path. They now use the same
+  PATH-resolved tool names as everywhere else.
+* **Removed `pillow`** from the dependency list: listed in upstream's
+  `requirements.txt` but not actually imported anywhere in the codebase.
+
+**Known, deliberately untouched**: `bam2mat()` still hardcodes its reference
+genome, genetic map, and imputation panel paths to the original author's
+institutional scratch space (e.g. `/rsrch3/scratch/bcb/jdou1/...`). This
+predates this fork and is unrelated to the changes above; it's flagged with a
+comment in `src/Monopogen.py` rather than fixed here.
+
+## License
+
+Monopogen's licensing is inconsistent upstream: the repository-level
+[`LICENSE`](./LICENSE) file (added upstream after this fork's `v1.0.0` base,
+carried forward here) states GPL-3.0, which is also what GitHub's own license
+detection reports for [`KChen-lab/Monopogen`](https://github.com/KChen-lab/Monopogen).
+However, several individual source files (e.g. `alleles_prior.py`,
+`base_q_ascii.py`) carry earlier MIT-style permission notices with a
+`Copyright (c) 2015` line, and `setup.py` itself declares an MIT classifier --
+both apparently inherited from an ancestor tool. This fork does not attempt
+to resolve that inconsistency; it treats GPL-3.0 as authoritative, per the
+upstream repository's current stated license, and retains every original
+per-file copyright notice unchanged. Anyone relying on this fork for
+compliance purposes should treat the above as a known open question, not a
+resolved determination.
+
+All modifications in this fork are documented above and, per GPL-3.0,
+distributed under the same license as the original.
 
