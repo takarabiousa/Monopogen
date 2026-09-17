@@ -1,0 +1,66 @@
+name: Smoke test
+
+on:
+  push:
+    branches: [v1.0, v1.1]
+  pull_request:
+    branches: [v1.0, v1.1]
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: monopogen
+          environment-file: environment.yml
+          auto-activate-base: false
+
+      - name: Verify tools resolve on PATH
+        run: |
+          samtools --version | head -1
+          bcftools --version | head -1
+          tabix --version | head -1
+          beagle 2>&1 | head -3 || true
+          picard 2>&1 | head -3 || true
+
+      - name: preProcess
+        working-directory: test
+        run: |
+          python ../src/Monopogen.py preProcess -b bam.lst -o out -t 2
+          test -f out/Bam/chr20.filter.bam.lst
+
+      - name: germline
+        working-directory: test
+        run: |
+          python ../src/Monopogen.py germline -r region.lst -p ../example/ -g ../example/chr20_2Mb.hg38.fa -m 3 -s all -o out -t 2
+          test -f out/germline/chr20.phased.vcf.gz
+
+      - name: somatic (featureInfo)
+        working-directory: test
+        run: |
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -s featureInfo -g ../example/chr20_2Mb.hg38.fa
+
+      - name: somatic (cellScan)
+        working-directory: test
+        run: |
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -w 10MB -s cellScan -g ../example/chr20_2Mb.hg38.fa
+
+      - name: somatic (LDrefinement)
+        working-directory: test
+        run: |
+          python ../src/Monopogen.py somatic -i out -r region.lst -l ../example/cell_cluster.csv -t 2 -s LDrefinement -g ../example/chr20_2Mb.hg38.fa
+
+      - name: Upload output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monopogen-smoketest-output
+          path: test/out/
+          retention-days: 7

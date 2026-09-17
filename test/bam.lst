@@ -1,2 +1,2 @@
-ID1,/rsrch3/scratch/bcb/jdou1/scAncestry/Monopogen/example/A.bam
-ID2,/rsrch3/scratch/bcb/jdou1/scAncestry/Monopogen/example/B.bam
+ID1,../example/A.bam
+ID2,../example/B.bam
