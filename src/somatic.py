@@ -17,13 +17,21 @@ from pysam import VariantFile
 import multiprocessing as mp
 from multiprocessing import Pool
 
+# External tools are installed via environment.yml and resolved on PATH -- no
+# --app-path/bundled-binary directory is required.
+SAMTOOLS = "samtools"
+BCFTOOLS = "bcftools"
+BGZIP = "bgzip"
+
+# LDrefinement.R lives alongside this file, not under app-path.
+LDREFINEMENT_R = os.path.join(os.path.dirname(os.path.realpath(__file__)), "LDrefinement.R")
 
 
 def withSNVs(invcf, path):
 	print(invcf)
 	#pysam.tabix_index(invcf, preset="vcf", force=TRUE)
 	print(path)
-	os.system(path + "/tabix -p vcf " + invcf)
+	os.system("tabix -p vcf " + invcf)
 	vcf = VariantFile(invcf) 
 	cnt = 0
 	for rec in vcf.fetch():
@@ -141,8 +149,7 @@ def bamExtract(para):
 	
 	chr = para_lst[0]
 	out = para_lst[1]
-	app_path = para_lst[2]
-	samtools = os.path.abspath(app_path) + "/samtools" 
+	samtools = SAMTOOLS
 	out = os.path.abspath(out)
 	inbam = getBamName(chr, out)
 	outbam =  out + "/Bam/" + chr + ".filter.targeted.bam"
@@ -162,10 +169,9 @@ def bamSplit(para):
 	chr = para_lst[0]
 	cell = para_lst[1]
 	out = para_lst[2]
-	app_path = para_lst[3]
 
 	#assert os.path.isfile(bam_filter), "*.fiter.targeted.bam file {} cannot be found!".format(bam_filter)
-	samtools = app_path + "/samtools" 
+	samtools = SAMTOOLS
 	output_bam =  out + "/Bam/merge.filter.targeted.bam" 
 	infile = pysam.AlignmentFile(output_bam,"rb")
 	# Note to change the read groups 
@@ -204,11 +210,10 @@ def jointCall(para):
 	jobid = para_lst[0]
 	chr=para_lst[1]
 	out = para_lst[2]
-	app_path = para_lst[3]
-	reference = para_lst[4]
-	samtools = app_path + "/samtools" 
-	bcftools = app_path + "/bcftools" 
-	bgzip = app_path + "/bgzip"
+	reference = para_lst[3]
+	samtools = SAMTOOLS
+	bcftools = BCFTOOLS
+	bgzip = BGZIP
 	bam_filter = out + "/Bam/split_bam/cell.bam.lst"
 	cmd1 = samtools + " mpileup -b " + bam_filter + " -f "  + reference + " -r " +  jobid + " -q 20 -Q 20 -t DP4 -d 10000 -v "
 	cmd1 = cmd1 + " | " + bcftools + " view " + " | "  + bcftools  + " norm -m-both -f " + reference 
@@ -307,10 +312,9 @@ def LDrefinement(para):
 	para_lst = para.strip().split(">")
 	region = para_lst[0]
 	out = para_lst[1]
-	app_path = para_lst[2]
 	outdir = out+"/somatic/"
 	cellfile = out+"/somatic/"+region+".gl.filter.hc.cell.mat.gz"
-	cmd = "Rscript " + app_path + "/../src/LDrefinement.R  " + cellfile + " " + outdir + " " + region 
+	cmd = "Rscript " + LDREFINEMENT_R + "  " + cellfile + " " + outdir + " " + region
 	print(cmd)
 	output = os.system(cmd)
 	if output == 0:

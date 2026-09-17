@@ -17,6 +17,14 @@ from pysam import VariantFile
 import multiprocessing as mp
 from multiprocessing import Pool
 
+# External tools are installed via environment.yml and resolved on PATH -- no
+# --app-path/bundled-binary directory is required.
+SAMTOOLS = "samtools"
+BCFTOOLS = "bcftools"
+BGZIP = "bgzip"
+BEAGLE = "beagle"
+REQUIRED_PROGRAMS = (SAMTOOLS, BCFTOOLS, BGZIP, BEAGLE)
+
 
 LIB_PATH = os.path.abspath(
 	os.path.join(os.path.dirname(os.path.realpath(__file__)), "pipelines/lib"))
@@ -107,11 +115,10 @@ def validate_user_setting_germline(args):
 
 
 def check_dependencies(args):
-	programs_to_check = ("vcftools", "bgzip",  "bcftools", "beagle.08Feb22.fa4.jar", "beagle.27Jul16.86a.jar","samtools","picard.jar", "java")
-
-	for prog in programs_to_check:
-		out = os.popen("command -v {}".format(args.app_path + "/" + prog)).read()
-		assert out != "", "Program {} cannot be found!".format(prog)
+	# Resolved on PATH, provided by the monopogen conda environment (environment.yml)
+	# rather than a user-supplied --app-path directory.
+	for prog in REQUIRED_PROGRAMS:
+		assert shutil.which(prog) is not None, "Program {} cannot be found on PATH!".format(prog)
 
 #	python_pkgs_to_check = ("drmaa",)
 
@@ -201,8 +208,10 @@ def BamFilter(myargs):
 		#print(str(s.query_length)  + ":" + str(s.get_tag("AS")) + ":" + str(s.get_tag("NM")))
 		if s.has_tag("NM"):
 			val= s.get_tag("NM")
-		if s.has_tag("nM"):
-			val= s.get_tag("nM")                  
+		elif s.has_tag("nM"):
+			val= s.get_tag("nM")
+		else:
+			val = 999
 		if val < max_mismatch:
 			outfile.write(s)
 	infile.close()

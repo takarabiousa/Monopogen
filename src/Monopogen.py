@@ -29,6 +29,17 @@ LIB_PATH = os.path.abspath(
 if LIB_PATH not in sys.path:
 	sys.path.insert(0, LIB_PATH)
 
+# External tools are installed via environment.yml and resolved on PATH -- no
+# --app-path/bundled-binary directory is required.
+SAMTOOLS = "samtools"
+BCFTOOLS = "bcftools"
+BGZIP = "bgzip"
+BEAGLE = "beagle"
+
+# GRCh38.region.{10,50}MB.lst live alongside this package, not under app-path.
+RESOURCE_DIR = os.path.abspath(
+	os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "resource"))
+
 PIPELINE_BASEDIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 CFG_DIR = os.path.join(PIPELINE_BASEDIR, "cfg")
 
@@ -78,10 +89,10 @@ def germline(args):
 			cmd1 = cmd1 + " | " + bcftools + " view " + " | "  + bcftools  + " norm -m-both -f " + args.reference 
 			cmd1 = cmd1 + " | grep -v \"<X>\" | grep -v INDEL |" + bgzip +   " -c > " + args.out + "/germline/" +  jobid + ".gl.vcf.gz" 
 			#cmd2 = bcftools + " view " +  out + "/germline/" +  jobid + ".gl.vcf.gz" + " -i 'FORMAT/DP>1' | " + bcftools + " call -cv  | " + bgzip +    "  -c > " +  args.out + "/SCvarCall/"  +  jobid + ".gt.vcf.gz"
-			cmd3 = java + " -Xmx20g -jar " + beagle +  " gl=" +  out + "/germline/" +  jobid + ".gl.vcf.gz"  +  " ref=" +  imputation_vcf   + "  chrom=" + record[0] + " out="   +  out + "/germline/" + jobid + ".gp " + "impute=false  modelscale=2  nthreads=24  gprobs=true  niterations=0"
-			
+			cmd3 = beagle + " -Xmx20g gl=" +  out + "/germline/" +  jobid + ".gl.vcf.gz"  +  " ref=" +  imputation_vcf   + "  chrom=" + record[0] + " out="   +  out + "/germline/" + jobid + ".gp " + "impute=false  modelscale=2  nthreads=24  gprobs=true  niterations=0"
+
 			cmd4 = "zless -S " +  out + "/germline/" + jobid + ".gp.vcf.gz | grep -v  0/0  > " +  out + "/germline/" + jobid + ".germline.vcf"
-			cmd5 = java + " -Xmx20g -jar " + beagle +  " gt=" +  out + "/germline/" +  jobid + ".germline.vcf"  +  " ref=" +  imputation_vcf    +  "  chrom=" + record[0]  + " out="   +  out + "/germline/" + jobid+ ".phased " + "impute=false  modelscale=2  nthreads=24  gprobs=true  niterations=0"
+			cmd5 = beagle + " -Xmx20g gt=" +  out + "/germline/" +  jobid + ".germline.vcf"  +  " ref=" +  imputation_vcf    +  "  chrom=" + record[0]  + " out="   +  out + "/germline/" + jobid+ ".phased " + "impute=false  modelscale=2  nthreads=24  gprobs=true  niterations=0"
 			f_out = open(out + "/Script/runGermline_" +  jobid +  ".sh","w")
 			if args.step == "varScan" or args.step == "all":
 				f_out.write(cmd1 + "\n")
@@ -159,7 +170,7 @@ def somatic(args):
 		if run:
 			joblst = []
 			for id in chr_lst:
-				joblst.append(id+">"+args.out+">"+args.app_path)
+				joblst.append(id+">"+args.out)
 			with Pool(processes=args.nthreads) as pool:
 				result = pool.map(bamExtract, joblst)
 
@@ -182,7 +193,7 @@ def somatic(args):
 			joblst = []
 
 			for cell in cell_lst:
-					para = "merge" + ":" + cell + ":" + args.out + ":" + args.app_path
+					para = "merge" + ":" + cell + ":" + args.out
 					joblst.append(para)
 
 			with Pool(processes=args.nthreads) as pool:
@@ -202,9 +213,9 @@ def somatic(args):
 
 		region_lst = []
 		if args.winSize=="10MB":
-			region_file = args.app_path + "/../resource/GRCh38.region.10MB.lst"
+			region_file = os.path.join(RESOURCE_DIR, "GRCh38.region.10MB.lst")
 		if args.winSize=="50MB":
-			region_file = args.app_path + "/../resource/GRCh38.region.50MB.lst"
+			region_file = os.path.join(RESOURCE_DIR, "GRCh38.region.50MB.lst")
 		with open(region_file) as f_in:
 			for line in f_in:
 				record = line.strip().split(",")
@@ -219,7 +230,7 @@ def somatic(args):
 		for id in region_lst:
 			record = id.strip().split(":")
 			chr = record[0]
-			joblst.append(id+">"+chr+">"+args.out+">"+args.app_path+">"+args.reference)
+			joblst.append(id+">"+chr+">"+args.out+">"+args.reference)
 
 
 		with Pool(processes=args.nthreads) as pool:
@@ -234,7 +245,7 @@ def somatic(args):
 			for reg in region_lst:
 				if re.search(id+":", reg):
 					tp = tp + " " + args.out+"/somatic/" +  reg + ".cell.gl.vcf.gz"
-			cmd = args.app_path + "/bcftools concat -o " + args.out+"/somatic/" +  id + ".cell.gl.vcf.gz " +  tp + " -O z"
+			cmd = BCFTOOLS + " concat -o " + args.out+"/somatic/" +  id + ".cell.gl.vcf.gz " +  tp + " -O z"
 			print(cmd)
 			output = os.system(cmd)
 
@@ -252,7 +263,7 @@ def somatic(args):
 
 		joblst = []
 		for id in chr_lst:
-			joblst.append(id+">"+args.out+">"+args.app_path)
+			joblst.append(id+">"+args.out)
 		with Pool(processes=args.nthreads) as pool:
 			result = pool.map(LDrefinement, joblst)
 		error_check(all = chr_lst, output = result, step = "LDrefinement")
@@ -337,8 +348,6 @@ def main():
 								help="The bam file for the study sample, the bam file should be sorted. If there are multiple samples, each row with each sample") 
 	parser_preProcess.add_argument('-o', '--out', required= False,
 								help="The output director")
-	parser_preProcess.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_preProcess.add_argument('-m', '--max-mismatch', required=False, type=int, default=3,
 								help="The maximal alignment mismatch allowed in one reads for variant calling")
 	parser_preProcess.add_argument('-t', '--nthreads', required=False, type=int, default=1,
@@ -362,8 +371,6 @@ def main():
 								help="The population-level variant panel for variant imputation refinement, such as 1000 Genome 3")
 	parser_germline.add_argument('-m', '--max-softClipped', required=False, type=int, default=1,
 								help="The maximal soft-clipped allowed in one reads for variant calling")
-	parser_germline.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_germline.add_argument('-t', '--nthreads', required=False, type=int, default=1,
 								help="Number of jobs used for SNVs calling")
 	parser_germline.add_argument('-n', '--norun', required=False, default="FALSE", 
@@ -378,10 +385,8 @@ def main():
 								help="The output folder from previous germline module")
 	parser_somatic.add_argument('-r', '--region', required= True, 
 								help="The chromosome IDs for variant calling. Each chromosomes in one row.")
-	parser_somatic.add_argument('-l', '--barcode', required= True, 
+	parser_somatic.add_argument('-l', '--barcode', required= True,
 								help="The csv file including cell barcode information")
-	parser_somatic.add_argument('-a', '--app-path', required=True,
-								help="The app library paths used in the tool")
 	parser_somatic.add_argument('-t', '--nthreads', required=False, type=int, default=22,
 								help="Number of jobs used for SNV calling") 
 	parser_somatic.add_argument('-w', '--winSize', required=False,  default="10MB",
@@ -409,13 +414,12 @@ def main():
 	if args.subcommand == "somatic":
 		args.out = args.input_folder
 
-	global out, samtools, bcftools, bgzip, java, beagle 
+	global out, samtools, bcftools, bgzip, beagle
 	out = os.path.abspath(args.out)
-	samtools  = os.path.abspath(args.app_path) + "/samtools" 
-	bcftools = os.path.abspath(args.app_path) + "/bcftools"
-	bgzip = os.path.abspath(args.app_path) + "/bgzip"
-	java =  "java"
-	beagle = os.path.abspath(args.app_path) + "/beagle.27Jul16.86a.jar"
+	samtools = SAMTOOLS
+	bcftools = BCFTOOLS
+	bgzip = BGZIP
+	beagle = BEAGLE
 
 
 	args.func(args)

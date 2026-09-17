@@ -1,4 +1,15 @@
 # Monopogen: SNV calling from single cell sequencing data
+
+> **This is a fork.** This repository (`takarabiousa/Monopogen`) is a fork of
+> [`KChen-lab/Monopogen`](https://github.com/KChen-lab/Monopogen), maintained by
+> Takara Bio USA. The `v1.1` branch is based on the upstream
+> [`v1.1.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.1.0) release
+> tag. See [Changes made in this fork](#changes-made-in-this-fork) below for
+> what differs from upstream, and [License](#license) for licensing and
+> attribution. Some example command output further down this README is
+> reproduced verbatim from historical upstream runs and predates this fork's
+> changes -- it's kept as-is for illustration, not as instructions to copy.
+
 ## Table of Contents
 
 [//]: # (BEGIN automated TOC section, any edits will be overwritten on next source refresh)
@@ -73,12 +84,11 @@ There are three test scripts in the `test/` folder `test/runPreprocess.sh`, `tes
 You can type the following command to get the help information.
 ```
 path="XXX/Monopogen"  # where Monopogen is downloaded
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${path}/apps
 python ${path}/src/Monopogen.py  preProcess --help`
 ```
 Output is 
 ```
-usage: Monopogen.py preProcess [-h] -b BAMFILE [-o OUT] -a APP_PATH
+usage: Monopogen.py preProcess [-h] -b BAMFILE [-o OUT]
                                [-m MAX_MISMATCH] [-t NTHREADS]
 
 optional arguments:
@@ -88,8 +98,6 @@ optional arguments:
                         be sorted. If there are multiple samples, each row
                         with each sample (default: None)
   -o OUT, --out OUT     The output director (default: None)
-  -a APP_PATH, --app-path APP_PATH
-                        The app library paths used in the tool (default: None)
   -m MAX_MISMATCH, --max-mismatch MAX_MISMATCH
                         The maximal alignment mismatch allowed in one reads
                         for variant calling (default: 3)
@@ -99,8 +107,7 @@ optional arguments:
  You need to prepare the bam file list for option `-b`. 
 ```
 path="XXy/Monopogen"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${path}/apps
-python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o out  -a ${path}/apps
+python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o out
 ```
 After running the `preProcess` module, there will be bam files after quality controls in the folder `out/Bam/` used for downstream SNV calling.
   
@@ -114,7 +121,7 @@ The output is
 usage: Monopogen.py germline [-h] -r REGION -s
                              {varScan,varImpute,varPhasing,all} [-o OUT] -g
                              REFERENCE -p IMPUTATION_PANEL
-                             [-m MAX_SOFTCLIPPED] -a APP_PATH [-t NTHREADS]
+                             [-m MAX_SOFTCLIPPED] [-t NTHREADS]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -131,8 +138,6 @@ optional arguments:
                         The population-level variant panel for variant
                         imputation refinement, such as 1000 Genome 3 (default:
                         None)
-  -a APP_PATH, --app-path APP_PATH
-                        The app library paths used in the tool (default: None)
   -t NTHREADS, --nthreads NTHREADS
                         Number of threads used for SNVs calling (default: 1)
  ```
@@ -140,7 +145,7 @@ You need to prepare the genome region file list for option `-r` with an example 
   
 ```
 python  ${path}/src/Monopogen.py  germline  \
-    -a   ${path}/apps -t 1   -r  region.lst \
+    -t 1   -r  region.lst \
     -p  ../example/  \
     -g  ../example/chr20_2Mb.hg38.fa   -s all  -o out
 
@@ -185,7 +190,7 @@ chr20   276086  .       T       A       .       PASS    .       GT      0|1     
 If there are multiple single cell RNA samples and you want to use Monopogen on germline SNV calling, you can enable the `-norun` option.
 ```
 python  ${path}/src/Monopogen.py  germline  \
-    -a   ${path}/apps -t 8   -r  region.lst \
+    -t 8   -r  region.lst \
     -p  ../example/  \
     -g  ../example/chr20_2Mb.hg38.fa   -s all  -o out
     --norun TRUE
@@ -223,8 +228,8 @@ region.lst
 ```
 The data preprocess step can be run as (~3 mins)
 ```
-path="/rsrch3/scratch/bcb/jdou1/scAncestry/Monopogen"
-${path}/src/Monopogen.py  preProcess -b bam.lst -o retina  -a ${path}/apps  -t 1
+path="XXX/Monopogen"
+${path}/src/Monopogen.py  preProcess -b bam.lst -o retina -t 1
 ```
 The output is 
 ```
@@ -242,7 +247,7 @@ The output is
 The germline SNV calling can be run as (~80 mins).
  
 ```
-${path}/src/Monopogen.py  germline  -a ${path}/apps  -r region.lst \
+${path}/src/Monopogen.py  germline  -r region.lst \
  -p ./ \
  -g  GRCh38.chr20.fa  -m 3 -s all  -o retina
 ```
@@ -559,10 +564,9 @@ Here we demonstrate how we can identify ancestry background on snRNA sample `19D
 ```
 chain="${path}/resource/hg38ToHg19.over.chain.gz"
 GRCh37_chr20="GRCh37.chr20.fa"
-picard="${path}/apps/picard.jar"
 
-java -jar ${picard} CreateSequenceDictionary R=${GRCh37_chr20} O="GRCh37.chr20.dict"
-java -Xmx10g  -jar ${picard} LiftoverVcf I=./retina/germline/chr20.phased.vcf.gz    O=./retina/germline/chr20.phased.GRCh37.vcf.gz   R=${GRCh37_chr20}  CHAIN=${chain} REJECT="temp.vcf"   WARN_ON_MISSING_CONTIG=true
+picard CreateSequenceDictionary R=${GRCh37_chr20} O="GRCh37.chr20.dict"
+picard -Xmx10g LiftoverVcf I=./retina/germline/chr20.phased.vcf.gz    O=./retina/germline/chr20.phased.GRCh37.vcf.gz   R=${GRCh37_chr20}  CHAIN=${chain} REJECT="temp.vcf"   WARN_ON_MISSING_CONTIG=true
 
 ```
 The output will be as following
@@ -790,9 +794,8 @@ bm,chr20.maester_scRNA.bam
 The data preprocess can be run as (~3 mins)
 
 ```
-path="/rsrch3/scratch/bcb/jdou1/scAncestry/Monopogen"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${path}/apps
-python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o bm  -a ${path}/apps -t 1
+path="XXX/Monopogen"
+python  ${path}/src/Monopogen.py  preProcess -b bam.lst -o bm -t 1
 ```
 The output could be 
 
@@ -840,7 +843,7 @@ chr20
 Users also need to preprare for following files `CCDG_14151_B01_GRM_WGS_2020-08-05_chr20.filtered.shapeit2-duohmm-phased.vcf.gz` from [1KG3 imputation panel from 1KG3](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20201028_3202_phased/) and `GRCh38.chr20.fa`. 
 
 ```
-${path}/src/Monopogen.py  germline  -a ${path}/apps  -r region.lst \
+${path}/src/Monopogen.py  germline  -r region.lst \
  -p ./  -t 22 \
  -g  GRCh38.chr20.fa  -m 3 -s all  -o bm
 ```
@@ -1081,7 +1084,7 @@ One advantage of Monopogen is to extend the machinery of LD refinement from huma
 To extract the feature information from sequencing data, we need to run (this step will take ~63 mins)
 ```
 python  ${path}/src/Monopogen.py  somatic  \
-    -a   ${path}/apps  -r  region.lst  -t 50 \
+    -r  region.lst  -t 50 \
     -i  bm  -l  CB_7K.maester_scRNA.csv   -s featureInfo     \
     -g   GRCh38.chr20.fa
 
@@ -1095,7 +1098,7 @@ Then, we need to collect single cell level read information by running the `cell
 
 ```
 python  ${path}/src/Monopogen.py  somatic  \
-    -a   ${path}/apps  -r  region.lst  -t 22  -w 10MB \
+    -r  region.lst  -t 22  -w 10MB \
     -i  bm  -l  CB_7K.maester_scRNA.csv   -s cellScan     \
     -g   GRCh38.chr20.fa
 ```
@@ -1112,7 +1115,7 @@ Lines   total/split/realigned/skipped:  1593789/42248/4781/0
 Finally, we can run the LD refinment step to further improve the putative somatic SNV detection as (taking ~3 mins) 
 ```
 python  ${path}/src/Monopogen.py  somatic  \
-    -a   ${path}/apps  -r  region.lst  -t 22 \
+    -r  region.lst  -t 22 \
     -i  bm  -l  CB_7K.maester_scRNA.csv   -s LDrefinement     \
     -g   GRCh38.chr20.fa
 ```
@@ -1146,19 +1149,78 @@ chr20:436781:A:G              0/0              0/0              0/0
 * ***how to perform downstream PCA-based projection or admixture analysis***  
   PCA-based projection analysis can be peformed using [LASER 2.0](http://csg.sph.umich.edu/chaolong/LASER/)
    
-* ***bcftools: error while loading shared libraries: libbz2.so.1.0: not able to open shared object file: No such file or directly***  
-  Adding the `apps` folder of `Monopogen` in your library environment 
-  
-  `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/xx/apps`  
-  
-* ***AssertionError: Program vcftools cannot be found!***  
-  You may set the read/write permission on the folder `xx/apps` as  
-  
-  `chmod 770 -R  /xx/apps` 
- 
+* ***AssertionError: Program samtools/bcftools/bgzip/beagle cannot be found on PATH!***  
+  This fork resolves every external tool from the active conda environment
+  rather than a bundled `apps` folder -- make sure you've run
+  `conda env create -f environment.yml && conda activate monopogen` before
+  invoking `Monopogen.py`.
+
 ## Citation
 
 [Dou J, Tan Y, Kock KH, Wang J, Cheng X, Tan LM, Han KY, Hon CC, Park WY, Shin JW, Jin H, H Chen, L Ding, S Prabhakar, N Navin. K Chen. Single-nucleotide variant calling in single-cell sequencing data with Monopogen. Nature Biotechnology. 2023 Aug 17:1-0](https://www.nature.com/articles/s41587-023-01873-x)
+
+## Changes made in this fork
+
+The `v1.1` branch starts from upstream's [`v1.1.0`](https://github.com/KChen-lab/Monopogen/releases/tag/v1.1.0)
+release tag. Changes on top of that tag:
+
+* **Added [`environment.yml`](./environment.yml)**, pinning every external
+  tool (`samtools`, `bcftools`, `tabix`, `beagle`, `picard`) and Python
+  dependency (`pysam`, `numpy`, `pandas`, `scipy`) to versions already
+  validated against this codebase in downstream production use, rather than
+  latest releases. Notably `beagle` is pinned to a 4.1 build
+  (`4.1_21Jan17.6cc.jar`): the code hardcodes `beagle.27Jul16.86a.jar` and
+  passes `modelscale=`/`niterations=`/`impute=`/`gprobs=`, all Beagle
+  4.x-only parameters that Beagle 5.x's rewritten phasing algorithm no
+  longer accepts.
+* **Removed the required `--app-path`/`-a` argument** (and the bundled
+  `apps/`-relative binary-path convention it implied) from `preProcess`,
+  `germline`, and `somatic`, across all three source files (`Monopogen.py`,
+  `germline.py`, `somatic.py`) that referenced it. Tools are now resolved on
+  `PATH`, provided by the conda environment above. `GRCh38.region.{10,50}MB.lst`
+  (used by `somatic --step cellScan`) and `LDrefinement.R` (used by
+  `somatic --step LDrefinement`) are now located relative to this package's
+  own installed location instead of `--app-path`.
+* **Deleted the bundled `apps/` directory** (precompiled `samtools`,
+  `bcftools`, `beagle*.jar`, `picard.jar`, shared libraries, etc.) -- these
+  come from the conda environment now.
+* **Fixed a real crash bug in `germline.py`'s `BamFilter()`**: it checked a
+  read's `NM` tag, then separately (not `elif`) checked `nM`, leaving `val`
+  undefined -- and used one line later -- for any read with neither tag.
+* **Fixed `Monopogen.py`'s `germline()`**: its `bcftools norm` call was
+  missing `-c w` (warn and continue on a REF-allele mismatch, rather than
+  `bcftools`'s stricter default of aborting). This exact fix (and this
+  function's `mpileup -b` spacing, already correct here) was confirmed
+  present in the version of this codebase previously running in downstream
+  production use elsewhere; `jointCall()` in `somatic.py` was checked
+  against that same production version and did not carry the same fix, so
+  it's left as upstream wrote it.
+* **Removed `pillow`** from the dependency list: listed in upstream's
+  `requirements.txt` but not actually imported anywhere in the codebase.
+* Updated `test/runPreprocess.sh` and `test/runGermline.sh`, and the
+  runnable command examples in this README, to match the `--app-path`
+  removal above. Historical example *output* further up this README
+  (timestamped log lines, raw shell commands as they were actually printed)
+  is left verbatim -- it's a record of a real run, not live instructions.
+
+## License
+
+Monopogen's licensing is inconsistent upstream: the repository-level
+[`LICENSE`](./LICENSE) file (added upstream after this fork's `v1.1.0` base,
+carried forward here) states GPL-3.0, which is also what GitHub's own license
+detection reports for [`KChen-lab/Monopogen`](https://github.com/KChen-lab/Monopogen),
+and what `setup.py` itself declares by this version (`License :: OSI Approved
+:: GPL v3 or later`). However, several individual source files still carry
+earlier MIT-style permission notices with a `Copyright (c) 2015` line,
+apparently inherited from an ancestor tool and not yet cleaned up upstream.
+This fork does not attempt to resolve that inconsistency; it treats GPL-3.0
+as authoritative, per the upstream repository's current stated license and
+`setup.py` classifier, and retains every original per-file copyright notice
+unchanged. Anyone relying on this fork for compliance purposes should treat
+the above as a known open question, not a resolved determination.
+
+All modifications in this fork are documented above and, per GPL-3.0,
+distributed under the same license as the original.
 
 
 
