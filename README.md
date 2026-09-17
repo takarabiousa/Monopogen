@@ -226,6 +226,12 @@ release tag. Changes on top of that tag:
   PATH-resolved tool names as everywhere else.
 * **Removed `pillow`** from the dependency list: listed in upstream's
   `requirements.txt` but not actually imported anywhere in the codebase.
+* **Restored two fixes present in the version previously bundled downstream
+  but missing from pristine `v1.0.0`**: `germline()`'s `bcftools norm` call
+  now passes `-c w` (warn and continue on a REF-allele mismatch, rather than
+  `bcftools`'s stricter default of aborting), and its `samtools mpileup -b`
+  now has the space between the flag and its value that `v1.0.0` was
+  missing.
 
 * **Removed `bam2mat()`'s hardcoded institutional paths** (e.g.
   `/rsrch3/scratch/bcb/jdou1/...`), previously the original author's own

@@ -366,8 +366,8 @@ def germline(args):
 			if(len(record)==3):
 				jobid = record[0] + ":" + record[1] + "-" + record[2]
 			bam_filter = args.out + "/Bam/" +  record[0] +  ".filter.bam.lst"
-			cmd1 = samtools + " mpileup -b" + bam_filter + " -f "  + args.reference  + " -r " +  jobid + " -q 20 -Q 20 -t DP -d 10000000 -v "
-			cmd1 = cmd1 + " | " + bcftools + " view " + " | "  + bcftools  + " norm -m-both -f " + args.reference 
+			cmd1 = samtools + " mpileup -b " + bam_filter + " -f "  + args.reference  + " -r " +  jobid + " -q 20 -Q 20 -t DP -d 10000000 -v "
+			cmd1 = cmd1 + " | " + bcftools + " view " + " | "  + bcftools  + " norm -c w -m-both -f " + args.reference
 			cmd1 = cmd1 + " | grep -v \"<X>\" | grep -v INDEL |" + bgzip +   " -c > " + args.out + "/germline/" +  jobid + ".gl.vcf.gz" 
 			#cmd2 = bcftools + " view " +  out + "/germline/" +  jobid + ".gl.vcf.gz" + " -i 'FORMAT/DP>1' | " + bcftools + " call -cv  | " + bgzip +    "  -c > " +  args.out + "/SCvarCall/"  +  jobid + ".gt.vcf.gz"
 			cmd3 = beagle + " -Xmx20g gl=" +  out + "/germline/" +  jobid + ".gl.vcf.gz"  +  " ref=" +  args.imputation_panel  + "  chrom=" + record[0] + " out="   +  out + "/germline/" + jobid + ".gp " + "impute=false  modelscale=2  nthreads=1  gprobs=true  niterations=0"
