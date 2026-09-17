@@ -217,7 +217,9 @@ def BamFilter(myargs):
 	infile.close()
 	outfile.close()
 
-	os.system(samtools + " index " +  out + "/Bam/" + id+ "_"  + chr + ".filter.bam")
+	index_status = os.system(samtools + " index " +  out + "/Bam/" + id+ "_"  + chr + ".filter.bam")
+	if index_status != 0:
+		return(None)
 	if cnt ==0:
 		addChr(out + "/Bam/" +  id+ "_" + chr+ ".filter.bam", samtools)
 	bamfile = out + "/Bam/" +  id+ "_" + chr+ ".filter.bam"
@@ -234,5 +236,5 @@ def robust_get_tag(read, tag_name):
 def runCMD(cmd):
 	output = os.system(cmd)
 	if output == 0:
-		return(region)
+		return(cmd)
 	#process = subprocess.run(cmd, shell=True, stdout=open(args.logfile, 'w'), stderr=open(args.logfile,'w'))

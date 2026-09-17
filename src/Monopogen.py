@@ -113,7 +113,7 @@ def germline(args):
 		with Pool(processes=args.nthreads) as pool:
 			print(joblst)
 			result = pool.map(runCMD, joblst)
-	#error_check(all = region_lst, output = result, step = "germline module")
+		error_check(all = joblst, output = result, step = "germline module")
 
 
 
@@ -159,7 +159,9 @@ def somatic(args):
 			joblst.append(id+">"+args.out)
 		with Pool(processes=args.nthreads) as pool:
 			result = pool.map(featureInfo, joblst)
-		
+		error_check(all = region_lst, output = result, step = "featureInfo")
+
+
 	if args.step=="cellScan" or args.step=="all":
 		
 		logger.info("Get single cell level information from sequencing data...")
@@ -173,8 +175,9 @@ def somatic(args):
 				joblst.append(id+">"+args.out)
 			with Pool(processes=args.nthreads) as pool:
 				result = pool.map(bamExtract, joblst)
+			error_check(all = chr_lst, output = result, step = "cellScan:bamExtract")
 
-			####### merge bams from different chromosomes 
+			####### merge bams from different chromosomes
 			bamlst = []
 			print(chr_lst)
 			for chr in chr_lst:
@@ -304,20 +307,23 @@ def preProcess(args):
 				#assert os.path.isabs(record[1]), "Please use absolute path for bam file {}!".format(record[1])
 
 	para_lst = []
+	expected_bamfiles = []
 	with open(args.bamFile) as f_in:
 			for line in f_in:
 				record = line.strip().split(",")
 				logger.debug("PreProcessing sample {}".format(record[0]))
 				for chr in range(1, 23):
-					para_single  =  dict(chr = "chr" + str(chr), 
-						out = args.out, id = record[0], 
-						bamFile = record[1], 
+					para_single  =  dict(chr = "chr" + str(chr),
+						out = args.out, id = record[0],
+						bamFile = record[1],
 						max_mismatch = args.max_mismatch,
 						samtools = samtools)
 					para_lst.append(para_single)
+					expected_bamfiles.append(args.out + "/Bam/" + record[0] + "_chr" + str(chr) + ".filter.bam")
 	with Pool(processes=args.nthreads) as pool:
 		result = pool.map(BamFilter, para_lst)
-	# output the bam file list 
+	error_check(all = expected_bamfiles, output = result, step = "preProcess")
+	# output the bam file list
 
 	# generate postProcess bam files 
 	for chr in range(1, 23):

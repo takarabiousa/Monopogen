@@ -39,8 +39,8 @@ def withSNVs(invcf, path):
 	return(cnt)
 
 def runCMD(cmd):
-
-	os.system(cmd)
+	output = os.system(cmd)
+	return output == 0
 	#process = subprocess.run(cmd, shell=True, stdout=open(args.logfile, 'w'), stderr=open(args.logfile,'w'))
 
 
@@ -135,6 +135,8 @@ def featureInfo(para):
 			gl_vcf_filter_txt.write(b)
 			gl_vcf_filter_dp4.write(a)
 
+	return(region)
+
 def getBamName(chr, out):
 	#chr = region.split(":")[0]
 	infile = out + "/Bam/" + chr + ".filter.bam.lst"
@@ -161,7 +163,8 @@ def bamExtract(para):
 		f_out.write(cmd1 + "\n")
 		f_out.write(samtools + " index " +  outbam + "\n")
 	cmd="bash " + out+"/Script/bamExtract_" + chr + ".sh"
-	runCMD(cmd)
+	if runCMD(cmd):
+		return(chr)
 
 
 def bamSplit(para):
