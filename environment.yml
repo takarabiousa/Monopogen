@@ -23,16 +23,20 @@ dependencies:
   # README's "ancestry identification" section, not the core preProcess/
   # germline/somatic pipeline.
   #
-  # picard=3.0.0 has two bioconda builds: hdfd78af_0 (openjdk>=8) and
-  # hdfd78af_1 (openjdk>=17). Pinning just the version let conda pick the
-  # _1 build even alongside openjdk=11.0.9.1, and picard crashed with
-  # UnsupportedClassVersionError as a result. Bumping openjdk to 17 instead
-  # of pinning the build was tried and made things worse: 17's own
+  # picard>=3.0.0 requires openjdk>=17 in every bioconda build from that
+  # version on -- including, in practice, 3.0.0's own hdfd78af_0 build,
+  # which declares openjdk>=8 but still crashed with
+  # UnsupportedClassVersionError (both of 3.0.0's builds appear to wrap the
+  # identical upstream JAR, already compiled targeting Java 17 bytecode, so
+  # pinning the build hash didn't actually change anything). Bumping the
+  # shared openjdk to 17 was tried and made things worse: 17's own
   # dependency tree (harfbuzz/cairo/libglib/pcre2/...) conflicts with the
   # rest of this otherwise-old, already-validated stack and made the whole
-  # environment unsolvable. Pinning the exact build hash keeps openjdk=11
-  # and everything else untouched.
-  - picard=3.0.0=hdfd78af_0
+  # environment unsolvable. Every 2.x release through 2.27.5 declares
+  # openjdk>=8 as a genuinely different, older-compiled version line (the
+  # >=17 requirement is new starting at 3.0.0), so pin the last 2.x release
+  # instead and keep openjdk=11.0.9.1 for everything else.
+  - picard=2.27.5
   # Required by src/LDrefinement.R (somatic --step LDrefinement), invoked
   # via Rscript. r-base itself isn't pinned explicitly; conda resolves a
   # compatible one as a transitive dependency of these, matching
