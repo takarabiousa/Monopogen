@@ -13,14 +13,7 @@ dependencies:
   - numpy=1.19.5
   - pandas=1.1.5
   - scipy=1.6.3
-  # picard=3.0.0's only bioconda build still resolvable here requires
-  # openjdk>=17 (confirmed directly: pinning openjdk=11.0.9.1 got a picard
-  # build compiled for Java 17 class files anyway, and picard crashed with
-  # UnsupportedClassVersionError -- conda did not pick a compatible build
-  # automatically, despite an older openjdk>=8 build existing on paper).
-  # Old bytecode runs fine on a newer JVM, so Beagle 4.1 (2017-era) is
-  # unaffected by using 17 instead of 11 here.
-  - openjdk=17.0.9
+  - openjdk=11.0.9.1
   # Beagle 4.1: the code hardcodes beagle.27Jul16.86a.jar and passes
   # modelscale=/niterations=/impute=/gprobs= -- Beagle 4.x-only parameters
   # that Beagle 5.x's rewritten phasing algorithm no longer accepts.
@@ -29,7 +22,17 @@ dependencies:
   # Only needed for the optional GRCh38->GRCh37 liftover step documented in
   # README's "ancestry identification" section, not the core preProcess/
   # germline/somatic pipeline.
-  - picard=3.0.0
+  #
+  # picard=3.0.0 has two bioconda builds: hdfd78af_0 (openjdk>=8) and
+  # hdfd78af_1 (openjdk>=17). Pinning just the version let conda pick the
+  # _1 build even alongside openjdk=11.0.9.1, and picard crashed with
+  # UnsupportedClassVersionError as a result. Bumping openjdk to 17 instead
+  # of pinning the build was tried and made things worse: 17's own
+  # dependency tree (harfbuzz/cairo/libglib/pcre2/...) conflicts with the
+  # rest of this otherwise-old, already-validated stack and made the whole
+  # environment unsolvable. Pinning the exact build hash keeps openjdk=11
+  # and everything else untouched.
+  - picard=3.0.0=hdfd78af_0
   # Required by src/LDrefinement.R (somatic --step LDrefinement), invoked
   # via Rscript. r-base itself isn't pinned explicitly; conda resolves a
   # compatible one as a transitive dependency of these, matching
