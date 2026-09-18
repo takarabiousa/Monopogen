@@ -67,10 +67,19 @@ jobs:
         run: |
           python ../src/Monopogen.py somatic -i out -r region.lst -l ci_cell_cluster.csv -t 2 -s LDrefinement -g ../example/chr20_2Mb.hg38.fa
 
+      - name: Archive output on failure
+        if: failure()
+        working-directory: test
+        run: |
+          # cellScan names windowed-region files chr:start-end.*, and actions/
+          # upload-artifact rejects ":" outright -- tar sidesteps that since
+          # only the single tarball is uploaded, not each file individually.
+          tar -czf out.tar.gz out/
+
       - name: Upload output on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: monopogen-smoketest-output
-          path: test/out/
+          path: test/out.tar.gz
           retention-days: 7

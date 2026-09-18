@@ -25,3 +25,10 @@ dependencies:
   # picard=3.0.0 has one build requiring openjdk>=8 and a later rebuild
   # requiring >=17, and conda resolves the compatible one automatically.
   - picard=3.0.0
+  # Required by src/LDrefinement.R (somatic --step LDrefinement), invoked
+  # via Rscript. r-base itself isn't pinned explicitly; conda resolves a
+  # compatible one as a transitive dependency of these, matching
+  # CogentAP's own already-validated approach.
+  - r-data.table=1.14.0
+  - r-e1071=1.7_7
+  - r-ggplot2=3.3.3
