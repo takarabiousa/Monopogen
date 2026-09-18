@@ -32,3 +32,8 @@ dependencies:
   - r-data.table=1.14.0
   - r-e1071=1.7_7
   - r-ggplot2=3.3.3
+  # data.table::fread() needs R.utils at runtime to read gzipped files
+  # directly (LDrefinement.R calls fread() on a .gz path) -- not caught by
+  # grepping LDrefinement.R's own library() calls, since fread() loads it
+  # internally rather than the script requesting it directly.
+  - r-r.utils=2.10.1
