@@ -23,12 +23,23 @@ jobs:
           auto-activate-base: false
 
       - name: Verify tools resolve on PATH
+        # beagle/picard both exit non-zero on a bare invocation (no args) as
+        # part of printing their own usage banner -- that's expected and not
+        # itself a failure. But blindly `|| true`-ing the whole thing once
+        # hid a real UnsupportedClassVersionError from a picard/openjdk
+        # mismatch, so check the actual output instead of ignoring it.
         run: |
           samtools --version | head -1
           bcftools --version | head -1
           tabix --version | head -1
-          beagle 2>&1 | head -3 || true
-          picard 2>&1 | head -3 || true
+          for tool in beagle picard; do
+            out=$($tool 2>&1 || true)
+            echo "$out" | head -3
+            if echo "$out" | grep -qiE "error|exception"; then
+              echo "::error::$tool printed an error on startup"
+              exit 1
+            fi
+          done
 
       - name: preProcess
         working-directory: test

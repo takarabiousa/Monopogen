@@ -13,7 +13,14 @@ dependencies:
   - numpy=1.19.5
   - pandas=1.1.5
   - scipy=1.6.3
-  - openjdk=11.0.9.1
+  # picard=3.0.0's only bioconda build still resolvable here requires
+  # openjdk>=17 (confirmed directly: pinning openjdk=11.0.9.1 got a picard
+  # build compiled for Java 17 class files anyway, and picard crashed with
+  # UnsupportedClassVersionError -- conda did not pick a compatible build
+  # automatically, despite an older openjdk>=8 build existing on paper).
+  # Old bytecode runs fine on a newer JVM, so Beagle 4.1 (2017-era) is
+  # unaffected by using 17 instead of 11 here.
+  - openjdk=17.0.9
   # Beagle 4.1: the code hardcodes beagle.27Jul16.86a.jar and passes
   # modelscale=/niterations=/impute=/gprobs= -- Beagle 4.x-only parameters
   # that Beagle 5.x's rewritten phasing algorithm no longer accepts.
@@ -21,9 +28,7 @@ dependencies:
   - beagle=4.1_21Jan17.6cc.jar
   # Only needed for the optional GRCh38->GRCh37 liftover step documented in
   # README's "ancestry identification" section, not the core preProcess/
-  # germline/somatic pipeline. Pinned alongside openjdk=11.0.9.1 above:
-  # picard=3.0.0 has one build requiring openjdk>=8 and a later rebuild
-  # requiring >=17, and conda resolves the compatible one automatically.
+  # germline/somatic pipeline.
   - picard=3.0.0
   # Required by src/LDrefinement.R (somatic --step LDrefinement), invoked
   # via Rscript. r-base itself isn't pinned explicitly; conda resolves a
