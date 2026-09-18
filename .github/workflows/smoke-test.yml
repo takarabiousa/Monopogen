@@ -25,9 +25,12 @@ jobs:
       - name: Verify tools resolve on PATH
         # beagle/picard both exit non-zero on a bare invocation (no args) as
         # part of printing their own usage banner -- that's expected and not
-        # itself a failure. But blindly `|| true`-ing the whole thing once
-        # hid a real UnsupportedClassVersionError from a picard/openjdk
-        # mismatch, so check the actual output instead of ignoring it.
+        # itself a failure. Blindly `|| true`-ing the whole thing once hid a
+        # real UnsupportedClassVersionError from a picard/openjdk mismatch,
+        # so check the output instead of ignoring it. But grepping broadly
+        # for "error"/"exception" is also wrong: picard's own usage banner
+        # (a full program listing) matched that generically with nothing
+        # actually failing. Check for the specific crash signature instead.
         run: |
           samtools --version | head -1
           bcftools --version | head -1
@@ -35,7 +38,7 @@ jobs:
           for tool in beagle picard; do
             out=$($tool 2>&1 || true)
             echo "$out" | head -3
-            if echo "$out" | grep -qiE "error|exception"; then
+            if echo "$out" | grep -qE "UnsupportedClassVersionError|LinkageError|NoClassDefFoundError|Traceback \(most recent call last\)"; then
               echo "::error::$tool printed an error on startup"
               exit 1
             fi
