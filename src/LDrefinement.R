@@ -44,26 +44,38 @@ SVM_prepare <-function(x=NULL){
 SVM_train <- function(label=NULL, dir=NULL, region=NULL){
 
 	features <-c("QS", "VDB", "SGB", "RPB", "MQB", "MQSB", "BQB", "MQ0F")
+
+	# impute() (e1071) can silently drop to a plain vector when its input has
+	# a single row, instead of returning a 1-row matrix -- reshape it back so
+	# the 2D indexing below (test_x[,colnames(test_x)==...]) keeps working
+	# regardless of how many rows label$pos/neg/test end up with.
+	ensure_matrix <- function(x, cols){
+		if(is.null(dim(x))){
+			x <- matrix(x, nrow=1, dimnames=list(NULL, cols))
+		}
+		return(x)
+	}
+
 	label$pos <- as.data.frame(label$pos)
 	label$pos[label$pos=="None"] <- NA
-	# using median values to replace the missing values 
-	train_x_pos <- impute(as.matrix(data.matrix(label$pos[,features])), what="median")
+	# using median values to replace the missing values
+	train_x_pos <- ensure_matrix(impute(as.matrix(data.matrix(label$pos[,features])), what="median"), features)
 
-	# using the minior value of QS 
+	# using the minior value of QS
 	vec <- train_x_pos[,colnames(train_x_pos)=="QS"]
 	vec[vec>0.5] <- 1- vec[vec>0.5]
 	train_x_pos[,1] <- vec
-	
+
 	label$neg <- as.data.frame(label$neg)
 	label$neg[label$neg=="None"] <- NA
-	train_x_neg <- impute(as.matrix(data.matrix(label$neg[,features])), what="median")
+	train_x_neg <- ensure_matrix(impute(as.matrix(data.matrix(label$neg[,features])), what="median"), features)
 	vec <- train_x_neg[,colnames(train_x_neg)=="QS"]
 	vec[vec>0.5] <- 1- vec[vec>0.5]
 	train_x_neg[,1] <- vec
-	
+
 	label$test <- as.data.frame(label$test)
 	label$test[label$test=="None"] <- NA
-	test_x <- impute(as.matrix(data.matrix(label$test[,features])), what="median")
+	test_x <- ensure_matrix(impute(as.matrix(data.matrix(label$test[,features])), what="median"), features)
 	vec <- test_x[,colnames(test_x)=="QS"]
 	vec[vec>0.5] <- 1- vec[vec>0.5]
 	test_x[,1] <- vec

@@ -1219,6 +1219,18 @@ release tag. Changes on top of that tag:
   non-empty final VCF, log ending cleanly in `finished`) still exited
   non-zero. `germline()`'s check now verifies the step's actual expected
   output file instead of trusting that exit code.
+* **Guarded `LDrefinement.R`'s `SVM_train()` against a single-row `impute()`
+  result.** `e1071::impute()` can silently return a plain vector instead of
+  a 1-row matrix when its input has exactly one row, which then breaks the
+  2D column indexing (`test_x[,colnames(test_x)=="QS"]`) right after it.
+  `label$test`/`label$pos`/`label$neg` are all data-dependent subsets
+  (singleton-region, unphased-genotype filters), so this is a pre-existing
+  upstream edge case, not something introduced by this fork -- surfaced
+  because CI (see below) intentionally runs against a small cell subset,
+  which is far more likely to produce a single-row test set than a
+  full-scale run. No R installation was available to verify this fix
+  outside of CI itself; it's confirmed by the smoke-test workflow passing,
+  not by independent local testing.
 
 ## License
 
